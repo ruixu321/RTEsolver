@@ -1,0 +1,240 @@
+#include <fstream>
+#include <tuple>
+#include <string>
+#include <iostream>
+#include <vector>
+#include <sstream>      // std::istringstream
+#include <cmath>
+#include <algorithm>
+
+using namespace std;
+
+// Read parameter of the medium
+//
+
+void readMedium(vector <double>& length, vector <double>& T, vector <double>& XH2O, vector <double>& XCO2){
+
+  double length_temp, T_temp, XH2O_temp, XCO2_temp;
+  std::ifstream infileMedium("Medium");
+
+  if (infileMedium){
+    string line;
+    int nline = 0;
+    while (getline(infileMedium, line)) {
+      istringstream iss(line);
+      iss >> length_temp;
+      iss >> T_temp;
+      iss >> XH2O_temp;
+      iss >> XCO2_temp;
+
+      length.push_back(length_temp);
+      T.push_back(T_temp);
+      XH2O.push_back(XH2O_temp);
+      XCO2.push_back(XCO2_temp);
+
+
+      nline++;
+    }
+  }
+}
+
+void writeResults(vector <double>& I, string nameFile){
+
+  ofstream myfile;
+  myfile.open(nameFile);
+  for(int i = 0; i < I.size(); i++){
+
+    myfile << i;
+    myfile << " ";
+    myfile << I[i];
+    myfile << "\n";
+
+  }
+
+  myfile.close();
+
+}
+
+void writeSpectrum(vector <int>& nu, vector <double>& I, string nameFile){
+
+  ofstream myfile;
+  myfile.open(nameFile);
+  for(int i = 0; i < I.size(); i++){
+
+    myfile << nu[i];
+    myfile << " ";
+    myfile << I[i];
+    myfile << "\n";
+
+  }
+
+  myfile.close();
+
+}
+
+
+vector <double> intensity(vector <double> T, double P, vector <double> XH2O, vector <double> XCO2, vector <double> length, int wavenumber, int N, vector<vector<double>> dataH2O, vector<vector<double>> dataCO2, string ray, double Tw){
+  double C, wall, Iw, Ig, sum;
+
+  // DOM
+
+  vector<double> mu = {0.1422555, 0.5773503,0.8040087,0.9795543};
+  vector<double> w = {2.1637144, 2.6406988,0.7938272,0.6849436};
+
+  // Intensity
+
+  vector<vector<double>> I(4,vector<double>(N+1,1));
+  vector<double> Ires(N+1,1);
+
+  // Walls
+
+  Iw = blackbodyIntensity(wavenumber,Tw);
+
+  // matrix of transmissivity n*(N+1)*(N+1)
+
+  vector<vector<vector <double>>> tauBand(w.size(),vector<vector<double>> (N+1,vector<double>(N+1,1)));
+
+  // Transmissivity calculation
+
+  for(int n = 0; n<w.size(); n++){
+
+    for(int i=0; i<N+1; i++){
+
+      vector <double> lengthn = length;
+
+      transform(lengthn.begin(), lengthn.end(), lengthn.begin(),
+      bind1st(multiplies<double>(),1./mu[n]));
+
+      vector <double> tau = transmissivityBand(i, N, T, P, XH2O, XCO2, lengthn, wavenumber, N, dataH2O, dataCO2);
+
+      for(int j=0;j<N+1;j++){
+
+        tauBand[n][i][j] = tau[j];
+
+      }
+
+      //  cout << tauBand[0][N-1] << " " << tauBand[5][20] << endl;
+    }
+  }
+
+
+  for(int n=0; n<w.size(); n++){
+
+    I[n][0] = Iw;
+
+    for (int i = 0; i<(N); i++)
+    {
+      C = 0;
+      for(int j=0; j<i;j++){
+
+        if((j+1) == i){
+          C  += ((tauBand[n][j+1][i+1]-1)-(tauBand[n][j][i+1]-tauBand[n][j][i]))*blackbodyIntensity(wavenumber,T[j]);
+        }
+
+        else{
+
+          C  += ((tauBand[n][j+1][i+1]-tauBand[n][j+1][i])-(tauBand[n][j][i+1]-tauBand[n][j][i]))*blackbodyIntensity(wavenumber,T[j]);
+
+        }
+
+      }
+
+      I[n][i+1] = I[n][i] + (1-tauBand[n][i][i+1])*blackbodyIntensity(wavenumber,T[i])  + (tauBand[n][0][i+1]-tauBand[n][0][i]) *  blackbodyIntensity(wavenumber,Tw) + C ;
+
+    }
+
+    // end of loop columns
+  }
+
+  // end of loop n
+
+  for(int i = 0; i<N+1; i++){
+
+    for(int n = 0; n<w.size();n++ ){
+
+      Ires[i] = Ires[i] + I[n][i]*w[n]*mu[n];
+
+    }
+  }
+
+  return Ires;
+}
+
+
+int main(int argc, char* argv[]){
+
+
+  // command line parameter
+  //
+  //
+  // need to add parameter and change the name of the function
+  //
+  //
+  // need to add the grid
+
+  double Tw = atof(argv[1]);
+
+  vector<vector<double>> dataH2O, dataCO2, dataMedium;
+
+
+
+  readMedium(length, T, XH2O, XCO2);
+
+  //geometry parameter
+
+  int N = length.size(); // number of columns
+
+  double P = 1.;
+
+  vector<int> wavenumber(325,1);
+  vector<double> Inu(325,1);
+
+  vector<double> Inew(N+1,0);
+  vector<double> I(N+1,0);
+  vector <double> It(N+1,0);
+
+  //vector<double> mu = {0.066877,0.366693,0.288732,0.711267,0.633307,0.933123};
+
+  vector<double> mu = {0.1422555, 0.5773503,0.8040087,0.9795543};
+  vector<double> w = {2.1637144, 2.6406988,0.7938272,0.6849436};
+
+
+  for(int i=0; i<wavenumber.size();i++)
+  {
+
+    wavenumber[i] = 25*i + 25; //25 cm width
+
+    // print wavenumber
+    cout << wavenumber[i] << "/" << 25*(wavenumber.size()-1) + 25 << endl;
+
+    Inew = intensity(T, P, XH2O, XCO2, length, wavenumber[i], N, dataH2O, dataCO2, "Ip", Tw);
+
+    //transform (I.begin(), I.end(), Inew.begin(), I.begin(), plus<double>());
+
+    for(int j = 0; j<(N+1); j++){
+
+      I[j] = I[j] + Inew[j];
+    }
+
+    //double tau = transmissivityBand(T, P, XH2O, XCO2, length, wavenumber[i], N, dataH2O, dataCO2);
+
+    Inu [i] = Inew[N];
+  }
+
+  // DOM
+
+  for(int i=0; i<N+1;i++)
+  {
+
+    It[i] = It[i] + I[i]*25;
+
+
+  }
+
+  string nameFile = "I";
+  writeResults(It,nameFile);
+
+  nameFile = "Inu";
+  writeSpectrum(wavenumber, Inu,nameFile);
+
+}

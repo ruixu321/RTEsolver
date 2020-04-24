@@ -1,0 +1,253 @@
+// Fin interpolation coefficients (function of temperature) for SNB model
+
+tuple<double, int> interpolation(double T){
+  int IT;
+  double RT;
+  if(T>300){
+    if(T<5000){
+      RT = (T-300.)/100.;
+      IT = int(RT+1.0E-6);
+      RT = RT-IT;
+      IT = IT +1;
+    }
+    else{
+      RT = 1.;
+      IT = 47;
+    }
+  }
+  else{
+
+    RT = 0;
+    IT = 1;
+  }
+  return {RT, IT};
+}
+
+vector<vector<double>> readSNBH2O(){
+  std::ifstream infileH2O("SNBH2O");
+  vector<vector<double>> dataH2O(449*2, vector<double>(49, 1));
+  if (infileH2O) {
+    string line;
+    int nline = 0;
+    while (getline(infileH2O, line)) {
+      istringstream iss(line);
+      for(int i =0; i<49; i++){
+        iss >> dataH2O[nline][i];
+      }
+      nline++;
+    }
+    return dataH2O;
+  }
+}
+
+vector<vector<double>> readSNBCO2(){
+  std::ifstream infileH2O("SNBCO2");
+  vector<vector<double>> dataCO2(323*2, vector<double>(49, 1));
+  if (infileH2O) {
+    string line;
+    int nline = 0;
+    while (getline(infileH2O, line)) {
+      istringstream iss(line);
+      for(int i =0; i<49; i++){
+        iss >> dataCO2[nline][i];
+      }
+      nline++;
+    }
+    return dataCO2;
+  }
+
+
+}
+
+
+vector<double> transmissivityBand(int bandBegin, int bandEnd, vector <double> T, double P, vector <double> XH2O, vector <double> XCO2, vector <double> length, int nu, int N, vector<vector<double>> dataH2O, vector<vector<double>> dataCO2){
+
+
+  double XN2, GAM, YC, XB, YK, YB, SC, SK, SB, ZC, ZK, ZB, XK, XKH2O, XKCO2, XDH2O,XDCO2,RT;
+  tuple<double,int> I;
+  int IT;
+
+  vector <double> tau(N+1,1.);
+
+  SC = 0;
+  SB = 0;
+  SK = 0;
+
+  int idx=-1;
+
+  for(int j = bandBegin; j<bandEnd; j++){
+
+    XN2 = 1. - XCO2[j] - XH2O[j];
+
+    for (int idx1 = 0; idx1 < 323; idx1++)
+    {
+      if (dataCO2[idx1][0] == nu){
+        idx = idx1;
+        break;
+      }
+
+    }
+
+    if (idx != -1){
+
+      I = interpolation(T[j]);
+      RT = get<0>(I);
+      IT = get<1>(I);
+
+      XKCO2=dataCO2[idx][IT]+RT*(dataCO2[idx][IT+1]-dataCO2[idx][IT]);
+      XDCO2=dataCO2[idx+323][IT]+RT*(dataCO2[idx+323][IT+1]-dataCO2[idx+323][IT]);
+
+
+      GAM=P*(0.07*XCO2[j]+0.058*XN2+0.10*XH2O[j])*pow(296./T[j],0.7);
+      YC =XCO2[j]*P*length[j];
+      XB=2*GAM*XDCO2;
+      YK=YC*XKCO2;
+      YB=YK*XB;
+      SC=SC+YC;
+      if (SC > 1.E-12){
+        SK=SK+YK;
+        SB=SB+YB;
+        ZC=SC;
+        ZK=SK/ZC;
+        ZB=SB/SK;
+        XK=1+2*ZK*ZC/ZB;
+        tau[j+1]=tau[j+1]*exp(-ZB*(sqrt(XK)-1.));
+      }
+    }
+  }
+  SC = 0;
+  SB = 0;
+  SK = 0;
+  idx = -1;
+  for(int j = bandBegin; j<bandEnd; j++){
+
+    XN2 = 1. - XCO2[j] - XH2O[j];
+
+    for (int idx1 = 0; idx1 < 449; idx1++)
+    {
+      if (dataH2O[idx1][0] == nu){
+        idx = idx1;
+        break;
+      }
+
+    }
+
+    if(idx != -1){
+
+      I = interpolation(T[j]);
+      RT = get<0>(I);
+      IT = get<1>(I);
+
+
+      XKH2O=dataH2O[idx][IT]+RT*(dataH2O[idx][IT+1]-dataH2O[idx][IT]);
+      XDH2O=dataH2O[449+idx][IT]+RT*(dataH2O[449+idx][IT+1]-dataH2O[449+idx][IT]);
+      GAM = P*0.066*(7.*sqrt(296./T[j])*XH2O[j]+1.2*(XH2O[j]+XN2)+1.6*XCO2[j])*sqrt(296./T[j]);
+
+      YC =XH2O[j]*P*length[j];
+      XB=2*GAM*XDH2O;
+      YK=YC*XKH2O;
+      YB=YK*XB;
+      SC=SC+YC;
+      if (SC > 1.E-12){
+        SK=SK+YK;
+        SB=SB+YB;
+        ZC=SC;
+        ZK=SK/ZC;
+        ZB=SB/SK;
+        XK=1.+2.*ZK*ZC/ZB;
+        tau[j+1]=tau[j+1]*exp(-ZB*(sqrt(XK)-1.));
+      }
+    }
+  }
+  return tau;
+}
+
+
+vector <double> intensity(vector <double> T, double P, vector <double> XH2O, vector <double> XCO2, vector <double> length, int wavenumber, int N, vector<vector<double>> dataH2O, vector<vector<double>> dataCO2, string ray, double Tw){
+  double C, wall, Iw, Ig, sum;
+
+  // DOM
+
+  vector<double> mu = {0.1422555, 0.5773503,0.8040087,0.9795543};
+  vector<double> w = {2.1637144, 2.6406988,0.7938272,0.6849436};
+
+  // Intensity
+
+  vector<vector<double>> I(4,vector<double>(N+1,1));
+  vector<double> Ires(N+1,1);
+
+  // Walls
+
+  Iw = blackbodyIntensity(wavenumber,Tw);
+
+  // matrix of transmissivity n*(N+1)*(N+1)
+
+  vector<vector<vector <double>>> tauBand(w.size(),vector<vector<double>> (N+1,vector<double>(N+1,1)));
+
+  // Transmissivity calculation
+
+  for(int n = 0; n<w.size(); n++){
+
+    for(int i=0; i<N+1; i++){
+
+      vector <double> lengthn = length;
+
+      transform(lengthn.begin(), lengthn.end(), lengthn.begin(),
+      bind1st(multiplies<double>(),1./mu[n]));
+
+      vector <double> tau = transmissivityBand(i, N, T, P, XH2O, XCO2, lengthn, wavenumber, N, dataH2O, dataCO2);
+
+      for(int j=0;j<N+1;j++){
+
+        tauBand[n][i][j] = tau[j];
+
+      }
+
+      //  cout << tauBand[0][N-1] << " " << tauBand[5][20] << endl;
+    }
+  }
+
+
+  for(int n=0; n<w.size(); n++){
+
+    I[n][0] = Iw;
+
+    for (int i = 0; i<(N); i++)
+    {
+      C = 0;
+      for(int j=0; j<i;j++){
+
+        if((j+1) == i){
+          C  += ((tauBand[n][j+1][i+1]-1)-(tauBand[n][j][i+1]-tauBand[n][j][i]))*blackbodyIntensity(wavenumber,T[j]);
+        }
+
+        else{
+
+          C  += ((tauBand[n][j+1][i+1]-tauBand[n][j+1][i])-(tauBand[n][j][i+1]-tauBand[n][j][i]))*blackbodyIntensity(wavenumber,T[j]);
+
+        }
+
+      }
+
+      I[n][i+1] = I[n][i] + (1-tauBand[n][i][i+1])*blackbodyIntensity(wavenumber,T[i])  + (tauBand[n][0][i+1]-tauBand[n][0][i]) *  blackbodyIntensity(wavenumber,Tw) + C ;
+
+    }
+
+    // end of loop columns
+  }
+
+  // end of loop n
+
+  for(int i = 0; i<N+1; i++){
+
+    for(int n = 0; n<w.size();n++ ){
+
+      Ires[i] = Ires[i] + I[n][i]*w[n]*mu[n];
+
+    }
+  }
+
+  return Ires;
+}
+
+
