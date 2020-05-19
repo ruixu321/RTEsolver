@@ -65,6 +65,8 @@ class RadiationModel
         // output
         string qrFileName;
         string dqrFileName;
+        string aFileName;
+        string kappaFileName;
 
     protected:
         
@@ -77,10 +79,12 @@ class RadiationModel
 
     public:
 
-
         // constructor
-        RadiationModel(string absorptionName, vector<double>& gridMiddlePoint, vector<double>& T, vector<double>& XCO2, vector<double>& XH2O, vector<double>& P,
-                string dqrFileName, string qrFileName);
+        RadiationModel(
+            string name, vector<double>& gridInput, vector<double>& Tinput, 
+            vector<double>& XH2Oinput, vector<double>& XCO2input, vector<double>& Pinput, 
+            string dqrFileNameInput, string qrFileNameInput,
+            string aFileNameInput, string kappaFileNameInput);
 
         // solve the radiative transfert equation
         double Solve();

@@ -20,6 +20,10 @@ class WSGGBordbar: public AbsorptionModel
 
 	vector<double> c;
 	vector<double> d;
+
+	vector<vector<double>> aOutput;
+	vector<vector<double>> kappaOutput;
+
     public:
 
 	// compute the coefficients for WSGGBordbar model
@@ -43,6 +47,8 @@ class WSGGBordbar: public AbsorptionModel
 	double a(int n, double T); // return a coeff for band n at temperature T
 	double a(int n, double T, double MR); // return a coeff for band n at temperature T
 
+	vector<vector<double>> getAOutput(){return aOutput;};
+	vector<vector<double>> getKappaOutput(){return kappaOutput;};
 
 	double b(int i, int j, double MR);
 

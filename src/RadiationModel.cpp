@@ -7,8 +7,14 @@
 
 using namespace std;
 
-RadiationModel::RadiationModel(string name, vector<double>& gridInput, vector<double>& Tinput, vector<double>& XH2Oinput, 
-        vector<double>& XCO2input, vector<double>& Pinput, string dqrFileNameInput, string qrFileNameInput){
+RadiationModel::RadiationModel
+(
+    string name, vector<double>& gridInput, vector<double>& Tinput, 
+    vector<double>& XH2Oinput, vector<double>& XCO2input, vector<double>& Pinput, 
+    string dqrFileNameInput, string qrFileNameInput,
+    string aFileNameInput, string kappaFileNameInput
+)
+{
 
     //cout << "--> New Radiation Model " << endl;
     
@@ -50,7 +56,7 @@ RadiationModel::RadiationModel(string name, vector<double>& gridInput, vector<do
     qr = vector<double> (NPoints,0.);
 
     // radiative source term
-    //
+
     dqr = vector<double> (NPoints-1, 0.);
 
     // input parameters
@@ -65,7 +71,8 @@ RadiationModel::RadiationModel(string name, vector<double>& gridInput, vector<do
 
     dqrFileName = dqrFileNameInput;
     qrFileName = qrFileNameInput;
-
+    aFileName = aFileNameInput;
+    kappaFileName = kappaFileNameInput;
 
 }
 
@@ -101,7 +108,7 @@ double RadiationModel::Solve(){
 
     // compute the wsgg coefficients based on temperature
 
-    absorption->ComputeCoeffs(); 
+    absorption->ComputeCoeffs();
 
     cout << " ----> I+ " << endl;
 
@@ -182,7 +189,6 @@ void RadiationModel::ComputeRadiativeSource(){
 
         dqr[i] = (qr[i+1] - qr[i])/DeltaX[i];
     }
-
 }
 
 /* * Write data to files
@@ -194,6 +200,8 @@ void RadiationModel::WriteData(){
 
     ofstream qrfile (qrFileName);
     ofstream dqrfile (dqrFileName);
+    ofstream afile (aFileName);
+    ofstream kappafile (kappaFileName);
 
     if (qrfile.is_open()){
 
@@ -216,6 +224,33 @@ void RadiationModel::WriteData(){
         dqrfile.close();
     }
 
+    vector<vector<double>> aOutput = absorption->getAOutput();
+
+    if (afile.is_open()){
+        afile << "x [m]\ta0\ta1\ta2\ta3\ta4" << endl;
+        for (int idx = 0; idx < gridMidPoint.size(); idx++){
+            afile << gridMidPoint[idx] << "\t";
+            for (int iBand = 0; iBand < absorption->NbBands(); iBand++) {
+                afile << aOutput[iBand][idx] << "\t";
+            }
+            afile << endl;
+        }
+        afile.close();
+    }
+
+    vector<vector<double>> kappaOutput = absorption->getKappaOutput();
+
+    if (kappafile.is_open()){
+        kappafile << "x [m]\tkappa0\tkappa1\tkappa2\tkappa3\tkappa4" << endl;
+        for (int idx = 0; idx < gridMidPoint.size(); idx++){
+            kappafile << gridMidPoint[idx] << "\t";
+            for (int iBand = 0; iBand < absorption->NbBands(); iBand++) {
+                kappafile << kappaOutput[iBand][idx] << "\t";
+            }
+            kappafile << endl;
+        }
+        kappafile.close();
+    }
 }
 
 

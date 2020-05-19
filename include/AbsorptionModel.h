@@ -42,6 +42,12 @@ class AbsorptionModel
 
         virtual int NbBands() = 0;
 
+        // return weights for the band
+        virtual vector<vector<double>> getAOutput() = 0;
+
+        // return absorption coefficient for the band
+        virtual vector<vector<double>> getKappaOutput() = 0;
+
         // Factory method to choose an absorption Model at run time
 
         static AbsorptionModel *make_absorptionModel( string absorptionName);

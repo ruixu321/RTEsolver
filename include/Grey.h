@@ -16,6 +16,9 @@ class Grey: public AbsorptionModel
         
         vector<vector<double>> b;
 
+        vector<vector<double>> aOutput;
+        vector<vector<double>> kappaOutput;
+
     public:
 
         // compute the coefficients for Grey model
@@ -38,7 +41,8 @@ class Grey: public AbsorptionModel
         double a();
         double a(int n, double T); // return a coeff for band n at temperature T
 
-
+        vector<vector<double>> getAOutput(){return aOutput;};
+        vector<vector<double>> getKappaOutput(){return kappaOutput;};
 
         vector<vector<double>> solve(vector<double> mu, int Npoints, vector <double> T, vector <double> P, vector <double> XH2O, vector <double> XCO2, vector <double> DeltaX, string sign);
     

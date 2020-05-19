@@ -1,1 +1,0 @@
-This in-house radiation transfer solver is developed to test validate different different gas radiation absorption models: thin, grey, banded Weighted-Sum-of-Grey-Gases (WSGG) and statistical narrow-band (SNB).

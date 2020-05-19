@@ -13,7 +13,7 @@ class WSGGJohansson: public AbsorptionModel
 {
     private:
 
-        int NBands = 5;
+    int NBands = 5;
         
 	vector <double> kappa1;
 	vector <double> kappa2;
@@ -27,6 +27,10 @@ class WSGGJohansson: public AbsorptionModel
 	vector <double>  C3j1;
 	vector <double>  C3j2;
 	vector <double>  C3j3;
+
+	vector<vector<double>> aOutput;
+	vector<vector<double>> kappaOutput;
+
     public:
 
 	// compute the coefficients for WSGGJohansson model
@@ -62,6 +66,9 @@ class WSGGJohansson: public AbsorptionModel
 	// return number of bands
 
 	int NbBands();
+
+	vector<vector<double>> getAOutput(){return aOutput;};
+	vector<vector<double>> getKappaOutput(){return kappaOutput;};
 
 	// write data
 

@@ -26,6 +26,9 @@ class SNB: public AbsorptionModel
         double dataH2O [H2OSize2];
         double dataCO2 [CO2Size2];
 
+        vector<vector<double>> aOutput;
+        vector<vector<double>> kappaOutput;
+
     public:
 
         // compute the coefficients for SNB model
@@ -53,6 +56,8 @@ class SNB: public AbsorptionModel
 
         vector<vector<double>> solve(vector<double> mu, int Npoints, vector <double> T, vector <double> P, vector <double> XH2O, vector <double> XCO2, vector <double> DeltaX, string sign);
     
+        vector<vector<double>> getAOutput(){return aOutput;};
+        vector<vector<double>> getKappaOutput(){return kappaOutput;};
 
         // wavenumber
         double nu(int iBand);

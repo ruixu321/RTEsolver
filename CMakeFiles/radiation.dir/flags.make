@@ -6,5 +6,5 @@ CXX_FLAGS =   -std=gnu++14
 
 CXX_DEFINES = 
 
-CXX_INCLUDES = -I/Users/ruixu/Documents/PFiles/Github/RTEsolver/include 
+CXX_INCLUDES = -I/Users/ruixu/Documents/Flamelet/Bitbucket/flamemaster/radiation/include 
 
